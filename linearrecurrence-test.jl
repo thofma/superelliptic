@@ -2,11 +2,13 @@ using Nemo
 include("linearrecurrence.jl")
 
 
-Br= ResidueRing(ZZ,ZZ(5^2))
+Br= ResidueRing(ZZ,107)
 Ri,x = PolynomialRing(Br,'x')
-M = matrix(Ri,2,2,[x,x,1,x+1])
-L = [11,13];
-R = [13,15];
-s=Int(floor(log(4,R[length(R)])));
+M = matrix(Ri,3,3,[0,0,2,105,0,0,0,105,0])
+L = [0];
+R = [103];
+s=Int64(floor(log(4,R[length(R)])));
 DDi= UpperCaseDD(Br(1),Br(2)^s,2^s)^(-1);
-LinearRecurrence(M, L, R, DDi, s);
+println(parent(DDi))
+println(parent(M))
+println(LinearRecurrence(M, L, R, DDi, s))

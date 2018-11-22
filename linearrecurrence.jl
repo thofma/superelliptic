@@ -33,6 +33,19 @@
 
 using Nemo
 
+
+function cast_poly_nmod(R, e)
+    RR = base_ring(R)
+    # If K/L with L prime, then RR is the UnramifiedQuotientRing(L,N)
+    # If R is not a polynomial ring, then (RR eq RRR)
+    res_ = fill(zero(RR), degree(e) + 1)
+    for i = 1:degree(e)
+        res__ = []
+        res_[i] = RR(data(coeff(e,i)))
+    end
+    return R(res_)
+end
+
 function LowerCaseDD(alpha,beta,d)
     #    Return the product dd(alpha,beta,d)
     #
@@ -73,7 +86,7 @@ function LowerCaseDD_(alpha, beta, d)
     res_ = fill(parent(beta)(0), 3*d + 1)
     res_[1] = beta
     for i = 2:d
-        res_[i] = i
+        res_[i] = parent(beta)(i)
     end
     for i = -d:d
         res_[2*d+1+i] = alpha + i*beta
@@ -142,7 +155,7 @@ function RetrieveInverses(prodInv,r_)
 end
 
 function Evaluate(M, x)
-    R = matrix(base_ring(M),
+    R = matrix(parent(x),
                [ evaluate(M[i, j], x) for i = 1:rows(M),j = 1:cols(M)])
     return R
 end
@@ -280,7 +293,7 @@ function Algorithm10_9(points_, cvalues_, Mij_)
 
     n = length(points_)
     Mij1_ = [ Mij_[i][1:(n >> i)] for i in 1:k ]
-    Mij2_ = [ Mij_[i][(n >> i)+1:(n >> i-1)] for
+    Mij2_ = [ Mij_[i][(n >> i)+1:(n >> (i-1))] for
              i in 1:k ]
     res_ = Mij_[k][2]*Algorithm10_9(points_[1:(n >> 1)],
                                    cvalues_[1:(n >> 1)], Mij1_) +
@@ -386,6 +399,8 @@ function MatrixAPEvaluation(M, k_, logk,
     RPol,x = PolynomialRing(R,"x")
     n = rows(M)
     RMat = MatrixSpace(R,n,n)
+    alpha = R(alpha)
+    beta = R(beta)
 
     # STEP logk+1
     res_ = [ Evaluate(M, alpha), Evaluate(M, alpha+beta) ]
@@ -419,7 +434,7 @@ function MatrixAPEvaluation(M, k_, logk,
             #:deduce the components of M_k_[i]
             for c = 1:n
                 # we need more values of each component of M_k_[i+1]
-                baseValues_ = [ coeff(res_[j][r,c],0) for j in 1:(k_[i+1]+1) ]
+                baseValues_ = [ res_[j][r,c] for j in 1:(k_[i+1]+1) ]
                 values1_ = vcat(baseValues_,
                                 ShiftEvaluation(partiali1__[i], delta1__[i],
                                                 s1_[i], ddi1__[i], d, baseValues_, RPol))
@@ -431,7 +446,7 @@ function MatrixAPEvaluation(M, k_, logk,
                                                 s1_[i], ddi1__[i], d, shiftedValues_, RPol))
                 for l = 1:2*(k_[i+1]+1)
                     old1_[l][r,c] = values1_[l]
-                    old2_[l][r,c] = values2_[l] #???
+                    old2_[l][r,c] = values2_[l]
                 end
             end
         end
@@ -471,7 +486,7 @@ function MatrixEvaluationPre(M, k, ki_)
     R = base_ring(base_ring(M))
     n = rows(M)
     RMat = MatrixSpace(R,n,n)
-    M_ = [ ToBase(Evaluate(M,i)) for i in 1:(k+k2-1) ]
+    M_ = [ Evaluate(M,R(i)) for i in 1:(k+k2-1) ]
     L_ = fill(zero(RMat), k2)
     for i = k2:-1:(k+1)
         L_[i] = one(RMat)
@@ -479,9 +494,10 @@ function MatrixEvaluationPre(M, k, ki_)
     for i = k:-1:1
         L_[i] = M_[i]*L_[i+1]
     end		# L_ is ok, collects M(1),...,M(k)
-    C_ = [ one(RMat) ]
+    C_ = fill(zero(RMat), k2)
+    C_[1] = one(RMat)
     for i = 2:(k+1)
-        push!(C_, C_[i-1]*M_[k+i-1])
+        C_[i] = C_[i-1]*M_[k+i-1]
     end
     C_[k2] = M_[2*k]
     for j = (2*k-1):-1:k2
@@ -490,7 +506,7 @@ function MatrixEvaluationPre(M, k, ki_)
     for i = (k2-1):-1:(k+2)
         C_[i] = M_[i]*C_[i+1]
     end		# C_ is ok, collects M(k+1),...,M(2*k)
-    R_ = [ one(RMat) for i in 1:(k+1) ]
+    R_ = [ one(RMat) for i in 1:k2 ]
     for i = (k+2):k2
         R_[i] = R_[i-1]*M_[k+i-1]
     end		# R_ is ok, collects M(2*k+1),...,M(2*k+(k2-k))
@@ -501,7 +517,7 @@ function MatrixEvaluationPre(M, k, ki_)
     # 2: Interpolate:compute M_k(X) a la Algorithm 10.11
     # zur Gathen/Gerhard
     # i. this replaces the use of algorithm 10_5
-    facki_ = [ one(R) ]	# facki_[i] contains 1/fac(i)
+    facki_ = fill(one(R), k2 - 1) # facki_[i] contains 1/fac(i)
     for i = 2:k2-1
         facki_[i] = facki_[i-1]*ki_[i]
     end
@@ -549,11 +565,11 @@ function MatrixEvaluation(Mk, k2, beta_)
     #    If C = \ceil(beta_/k2) and M an nxn matrix, then the
     #    complexity is O( C(MM(n)k + n^2M(k)\log(k)) )
     #    (together w/ MatrixEvaluationPre)
-    #
+
     R = base_ring(base_ring(Mk))
     n = rows(Mk)
     RPol,x = PolynomialRing(R,"x")
-    RMat = MatrixSpace(RPol,n,n)
+    RMat = MatrixSpace(R,n,n)
     logk2 = floor(Int64,log2(k2))
 
     # 3: Evaluate M_k(X) at the points specified by beta_
@@ -684,7 +700,7 @@ function LinearRecurrence(M, L_,R_, DDi, s)
     n = rows(M)
     RMat = MatrixSpace(R,n,n)
     # res_[i] will contain M(L_i,R_i) at the end
-    res_ = [ one(parent(M)) for j in 1:r0 ] # TODO this should probably be in Rmat????
+    res_ = [ one(RMat) for j in 1:r0 ] # TODO this should probably be in Rmat????
 
     # STEP 0
     # get interval indices

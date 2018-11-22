@@ -1,10 +1,10 @@
-load "linearrecurrence.m";
+AttachSpec("superelliptic");
 
-Br:=Integers(5^2);
+Br:=Integers(107);
 Ri<x> := PolynomialRing(Br);
-M := Matrix(Ri,[[x, x],[1,x+1]]);
-L := [11,13];
-R := [13,15];
+M := Matrix(Ri, [[0,0,2],[105,0,0],[0,105,0]]);
+L := [0];
+R := [103];
 s:=Floor(Log(4,R[#R]));
 DDi:= UpperCaseDD(Br!1,Br!(2^s),2^s)^(-1);
 LinearRecurrence(M, L, R, DDi, s);
