@@ -38,10 +38,10 @@ function cast_poly_nmod(R, e)
     RR = base_ring(R)
     # If K/L with L prime, then RR is the UnramifiedQuotientRing(L,N)
     # If R is not a polynomial ring, then (RR eq RRR)
-    res_ = fill(zero(RR), degree(e) + 1)
-    for i = 1:degree(e)
+    res_ = [zero(RR) for i in 1:(degree(e) + 1)]
+    for i = 0:degree(e)
         res__ = []
-        res_[i] = RR(data(coeff(e,i)))
+        res_[i+1] = RR(data(coeff(e,i)))
     end
     return R(res_)
 end
@@ -83,7 +83,7 @@ function LowerCaseDD_(alpha, beta, d)
     #    Returns a sequence whose entries are the factors of dd(alpha,beta,d)
     #    ordered as before Theorem 5
     #
-    res_ = fill(parent(beta)(0), 3*d + 1)
+    res_ = [parent(beta)(0) for i in 1:(3*d + 1)]
     res_[1] = beta
     for i = 2:d
         res_[i] = parent(beta)(i)
@@ -115,7 +115,7 @@ function UpperCaseDD_(alpha, beta, k)
         push!(k_, (k_[length(k_)] >> 1))
     end
 
-    res_ = fill(parent(alpha)(0), 2*(length(k_)-1))
+    res_ = [parent(alpha)(0) for i in 1:2*(length(k_)-1)]
     for i = 1:(length(k_)-1)
         res_[2*i-1] = LowerCaseDD(beta*(k_[i+1]+1),beta,k_[i+1])
         res_[2*i] = LowerCaseDD(alpha*k_[i+1],beta,k_[i+1])
@@ -138,12 +138,12 @@ function RetrieveInverses(prodInv,r_)
     if (length(r_) == 0)
         return [prodInv]
     end
-    rProd = fill(parent(r_[1])(0), length(r_))
+    rProd = [parent(r_[1])(0) for i in 1:length(r_)]
     rProd[1] = r_[1]
     for i = 2:length(r_)
         rProd[i] = r_[i]*rProd[i-1]
     end
-    inv_ = fill(parent(prodInv)(0), length(r_))
+    inv_ = [parent(prodInv)(0) for i in 1:length(r_)]
     inv_[length(r_)] = prodInv
     for i = (length(r_)-1):-1:1
         inv_[i] = r_[i+1]*inv_[i+1]
@@ -179,7 +179,7 @@ function ShiftEvaluationPre(alpha, beta, ddi_, d, RPol)
     #    delta(a, i-1, d) as in BGS07, Lemma 2
     #
     R = base_ring(RPol)
-    partiali_ = fill(zero(R), d + 1)
+    partiali_ = [zero(R) for i in 1:(d + 1)]
     partiali_[1] =  one(R)
     for i = 2:d
         partiali_[1] = ddi_[i]*partiali_[1]
@@ -193,7 +193,7 @@ function ShiftEvaluationPre(alpha, beta, ddi_, d, RPol)
     end
 
     a = alpha*ddi_[1]
-    delta_ = fill(zero(R), d + 1)
+    delta_ = [zero(R) for i in 1:(d + 1)]
     delta_[1] =  one(R)
     for i = 0:d
         delta_[1] = delta_[1]*(a-i)
@@ -246,7 +246,7 @@ function Algorithm10_3(moduli_, k)
     #    NOTE: #moduli_ = 2^k
     #
     n = length(moduli_)
-    res_ = fill([], k+1)
+    res_ = [[] for i in 1:k+1]
     res_[1] = [ moduli_[j] for j in 1:n]
     for i = 2:k+1
         for j = 1:(n >> (i-1))
@@ -330,14 +330,14 @@ function MatrixAPEvaluationPre(k, alpha, beta, DDi_, RPol)
     end
     logk = length(k_)-1				# = Floor(Log(2,k))
 
-    ddi1__ = fill(typeof(alpha)[], logk)
-    partiali1__ = fill(typeof(alpha)[], logk)
-    delta1__ = fill(typeof(alpha)[], logk)
-    s1_ = fill(RPol(0), logk)
-    ddi2__ = fill(typeof(alpha)[], logk)
-    partiali2__ = fill(typeof(alpha)[], logk)
-    delta2__ = fill(typeof(alpha)[], logk)
-    s2_ = fill(RPol(0), logk)
+    ddi1__ = [typeof(alpha)[] for i in 1:logk]
+    partiali1__ = [typeof(alpha)[] for i in 1:logk]
+    delta1__ = [typeof(alpha)[] for i in 1:logk]
+    s1_ = [RPol(0) for i in 1:logk]
+    ddi2__ = [typeof(alpha)[] for i in 1:logk]
+    partiali2__ = [typeof(alpha)[] for i in 1:logk]
+    delta2__ = [typeof(alpha)[] for i in 1:logk]
+    s2_ = [RPol(0) for i in 1:logk]
     for i = logk:-1:1
         d = k_[i+1]
         dd1_ = LowerCaseDD_((k_[i+1]+1)*beta, beta, d)
@@ -396,7 +396,8 @@ function MatrixAPEvaluation(M, k_, logk,
     #
     # PRELIMINARIES
     R = base_ring(base_ring(M))
-    RPol,x = PolynomialRing(R,"x")
+    RPol = base_ring(M)
+    x = gen(RPol)
     n = rows(M)
     RMat = MatrixSpace(R,n,n)
     alpha = R(alpha)
@@ -487,14 +488,14 @@ function MatrixEvaluationPre(M, k, ki_)
     n = rows(M)
     RMat = MatrixSpace(R,n,n)
     M_ = [ Evaluate(M,R(i)) for i in 1:(k+k2-1) ]
-    L_ = fill(zero(RMat), k2)
+    L_ = [zero(RMat) for i in 1:k2]
     for i = k2:-1:(k+1)
         L_[i] = one(RMat)
     end
     for i = k:-1:1
         L_[i] = M_[i]*L_[i+1]
     end		# L_ is ok, collects M(1),...,M(k)
-    C_ = fill(zero(RMat), k2)
+    C_ = [zero(RMat) for i in 1:k2]
     C_[1] = one(RMat)
     for i = 2:(k+1)
         C_[i] = C_[i-1]*M_[k+i-1]
@@ -517,12 +518,12 @@ function MatrixEvaluationPre(M, k, ki_)
     # 2: Interpolate:compute M_k(X) a la Algorithm 10.11
     # zur Gathen/Gerhard
     # i. this replaces the use of algorithm 10_5
-    facki_ = fill(one(R), k2 - 1) # facki_[i] contains 1/fac(i)
+    facki_ = [one(R) for i in 1:(k2 - 1)] # facki_[i] contains 1/fac(i)
     for i = 2:k2-1
         facki_[i] = facki_[i-1]*ki_[i]
     end
     sign = -1
-    s_ = fill(zero(R), k2)
+    s_ = [zero(R) for i in 1:k2]
     s_[1] = sign*facki_[k2-1]
     for i = 2:k2-1
         sign = -sign
@@ -532,7 +533,8 @@ function MatrixEvaluationPre(M, k, ki_)
 
     # ii. call algorithm 10_3
     points_ = [ R(i) for i in 0:(k2-1) ]
-    RPol,x = PolynomialRing(R,"x")
+    RPol = base_ring(M)
+    x = gen(RPol)
     logk2 = floor(Int64,log2(k2))
     Mij_ = Algorithm10_3([ x-points_[i] for i in 1:k2 ], logk2)
 
@@ -568,7 +570,8 @@ function MatrixEvaluation(Mk, k2, beta_)
 
     R = base_ring(base_ring(Mk))
     n = rows(Mk)
-    RPol,x = PolynomialRing(R,"x")
+    RPol = base_ring(Mk)
+    x = gen(RPol)
     RMat = MatrixSpace(R,n,n)
     logk2 = floor(Int64,log2(k2))
 
@@ -676,7 +679,7 @@ function LinearRecurrence(M, L_,R_, DDi, s)
     R = base_ring(RPol)
 
     # PRELIMINARIES
-    r = length(L_)	# r is allowed:change (e.g. in the final step)
+    r = length(L_)	# r is allowed to change (e.g. in the final step)
     r0 = length(L_)	# r0 must never change
     k = 2^s	# current interval length
     factorsDD_ = UpperCaseDD_(R(1),R(k),k)   # r_[1] = dd(alpha,beta,d)
@@ -706,7 +709,7 @@ function LinearRecurrence(M, L_,R_, DDi, s)
     # get interval indices
     # l_[j] stores "index" of first interval
     # that fits into [L_[j]+1,...,R_[j]]
-    l_ = fill(0, r0)
+    l_ = [0 for j in 1:r0]
     for j = 1:r0
         qu,re = divrem(L_[j], k)
         if (re > 0)
@@ -760,7 +763,7 @@ function LinearRecurrence(M, L_,R_, DDi, s)
 
     # STEPS i
     # it may happen that after step 0, LApprox_[j] > RApprox_[j]
-    # in that case, we set these values:a new common value between
+    # in that case, we set these values to a new common value between
     # L_[j] and R_[j]
     for j = 1:r0
         if (LApprox_[j] > RApprox_[j])
@@ -787,7 +790,7 @@ function LinearRecurrence(M, L_,R_, DDi, s)
         # we need k2:use the tree structure of MatrixEvaluation
         # note: because of (*), k2 \le 2^s
         # for each interval boundary we'll have rho intervals
-        #:better approximate it
+        # to better approximate it
         rho = div(kOld,k)
 
         # l_[j] = number 1,2,3,... of leftmost interval
