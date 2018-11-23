@@ -285,7 +285,6 @@ R0PolMatH)
     tempD_ = LinearRecurrence(transpose(R0PolMat(cast_poly_nmod(R0Pol,genD))),
                                L_, R_, DDi, slr)
     tempD_ = [ transpose(tempD_[m]) for m in 1:length(tempD_) ]
-    println(tempD_)
     if (N < B)    # we need:compute the remaining matrices
         if (N == 1)    # everything is congruent mod p
             tempM_ = vcat(tempM_, [ tempM_[1] for l in (N+1):B ])
@@ -486,7 +485,6 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     #R0Pol = PolynomialRing(R0)
     #R1 = UnramifiedQuotientRing(K,N+1)
     #R1Pol = PolynomialRing(R1)
-    println(N)
     R0 = ResidueRing(ZZ, p^N)
     R0Pol,t1 = PolynomialRing(R0,'t')
     R1 = ResidueRing(ZZ,p^(N+1))
@@ -510,7 +508,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     # vandermonde trick: preliminaries
     R0Mat = MatrixSpace(R0, N, N)
     if (N < b-1 +b*(N-1)) && (N > 1)
-        V = R0Mat( [ i^j for i in 1:N for j in 0:N-1 ])
+        V = R0Mat( [ i^j for j in 0:N-1 for i in 1:N ])
         Vi = inv(V)
     else
         Vi = one(R0Mat)
@@ -518,7 +516,6 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
 
     hk = one(R1Pol)
     hFrob = R1Pol([ coeff(h,i) for i in 0:degree(h) ])
-    println(hFrob);
     # TODO hFrob = R1Pol([ FrobeniusImage(coeff(h,i)) for i in 0:degree(h) ])
     # at the start of the k-th loop hk = (hFrob)^k
     for k = 0:(N-1)
@@ -641,16 +638,13 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
          # Multiply
          M = M * MM
     end
-    println(M);
 
     # Step 4: Determine L polynomial
     ZPol,t = PolynomialRing(ZZ,"t")
     #CP = charpoly(PolynomialRing(base_ring(M),"t")[1],M::MatElem{RingElem})
     CP = invoke(charpoly, Tuple{Ring, MatElem{Nemo.nmod}},  PolynomialRing(base_ring(M),"t")[1], M)
-    println(CP)
     Chi = cast_poly_nmod(ZPol,CP)
     L = numerator(t^(2*g)*(Chi)(1//t))
-    println(t^(2*g)*((Chi)(1//t)))
     coeff_ = [ coeff(L, i) for i in 0:(2*g) ]
     prec = p^N
     mid = prec >> 1
