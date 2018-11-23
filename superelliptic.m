@@ -464,7 +464,7 @@ intrinsic AbsoluteFrobeniusAction(a::RngIntElt, hbar::RngUPolElt,N::RngIntElt)\
     // vandermonde trick: preliminaries
     R0Mat := MatrixRing(R0, N);
     if (N lt b-1 +b*(N-1)) and (N gt 1) then
-        V := elt< R0Mat | [ i^j : i in [1..N], j in [0..N-1] ] >;
+        V := R0Mat!( [ i^j : i in [1..N], j in [0..N-1] ] );
         Vi := R0Mat!(V^(-1));
     else
         Vi := R0Mat!1;
