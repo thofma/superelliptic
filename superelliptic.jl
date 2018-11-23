@@ -25,6 +25,7 @@
 #*****************************************************************************
 
 include("linearrecurrence.jl")
+import AbstractAlgebra.Ring
 
 # A few generalities on the differentials and the spaces W_{s,t}:
 # The differential x^iy^j dx lies in
@@ -73,26 +74,26 @@ function ScalarCoefficients(j, k, a, hk, p, q, N)
 # the sequence has length b*k+1
 
     R1 = base_ring(hk)
-    res_ = [ ] #R1
+    res_ = [zero(R1) for r in 1:degree(hk)+1]
 
     for r = 0:degree(hk)
         lambda = coeff(hk, r)
         # num = numerator of the two binomial expressions
         num = 1
         for i = 0:N-2
-            num = num*(-(j/a)-i)
+            num = num*(-(j//a)-i)
         end
         # denom = denominator of the two binomial expressions
         denom = factorial(k)*factorial((N-1)-k)
         # last summand
-        summand = num/denom
+        summand = num//denom
         sum = (-1)^(N-1+k)*summand
         # summing up going down
         for l = (N-2):-1:k
-            summand = summand*(l+1-k)/(-(j/a)-l)
+            summand = summand*(l+1-k)//(-(j//a)-l)
             sum = sum + (-1)^(l+k)*summand
         end
-        sum = R1(sum)
+        sum = R1(numerator(sum))*(R1(denominator(sum))^(-1))
         res_[r+1] = p*lambda*sum
     end
 
@@ -124,10 +125,10 @@ function RSCombination(h)
             end
         end
     end
-    Mi = M^(-1)
+    Mi = inv(M)
 
-    resR_ = [ Polynomial([ Mi[i,c] for c in 1:(b-1) ]) for i in 1:(b-1) ]
-    resS_ = [ Polynomial([ Mi[i,c] for c in b:rk ]) for i in 1:(b-1) ]
+    resR_ = [ parent(h)([ Mi[i,c] for c in 1:(b-1) ]) for i in 1:(b-1) ]
+    resS_ = [ parent(h)([ Mi[i,c] for c in b:rk ]) for i in 1:(b-1) ]
 
     return resR_, resS_
 end
@@ -167,6 +168,7 @@ function CastElement(R, e)
     return R(res_)
 end
 
+
 function CastMatrix(R, M)
 #    Return the image / a preimage of M over R
 #
@@ -189,7 +191,35 @@ function CastMatrix(R, M)
     res = zero_matrix(RR, rows(M), cols(M))
     for i = 1:rows(M)
         for j = 1:cols(M)
-            res[i,j] = CastElement(RR, M[i,j])
+            res[i,j] = cast_poly_nmod(RR, M[i,j])
+        end
+    end
+    return res
+end
+
+function CastBaseMatrix(R, M)
+#    Return the image / a preimage of M over R
+#
+#    INPUT:
+#
+#    -  ``R`` - a (polynomial) matrix ring over UnramifiedQuotientRing(K,N)
+#    -  ``M`` - a (polynomial) matrix over UnramifiedQuotientRing(K,N') with
+#               N' = N-1 or N+1
+#
+#    OUTPUT:
+#
+#    An element of R
+#
+#    NOTE:
+#
+#    This function is needed since Magma cannot coerce between
+#    UnramifiedQuotientRing(K,N) with different N
+#
+    RR = base_ring(R)
+    res = zero_matrix(RR, rows(M), cols(M))
+    for i = 1:rows(M)
+        for j = 1:cols(M)
+            res[i,j] = RR(data(M[i,j]))
         end
     end
     return res
@@ -250,21 +280,22 @@ R0PolMatH)
     R0PolMat = MatrixSpace(R0Pol, 1, 1)
 
     tempM_ = LinearRecurrence(transpose(CastMatrix(R0PolMatH,genM)), L_,
-                               R_, DDi, slr)
+                              R_, DDi, slr)
     tempM_ = [ transpose(tempM_[m]) for m in 1:length(tempM_) ]
-    tempD_ = LinearRecurrence(transpose(R0PolMat(CastElement(R0Pol,genD))),
+    tempD_ = LinearRecurrence(transpose(R0PolMat(cast_poly_nmod(R0Pol,genD))),
                                L_, R_, DDi, slr)
     tempD_ = [ transpose(tempD_[m]) for m in 1:length(tempD_) ]
-    if (N < B) then    # we need:compute the remaining matrices
-        if (N == 1) then    # everything is congruent mod p
+    println(tempD_)
+    if (N < B)    # we need:compute the remaining matrices
+        if (N == 1)    # everything is congruent mod p
             tempM_ = vcat(tempM_, [ tempM_[1] for l in (N+1):B ])
             tempD_ = vcat(tempD_, [ tempD_[1] for l in (N+1):B ])
         else    # apply the vandermonde trick
                 # denominators
             R0Mat = parent(tempD_[1])
-            taylor_ = [  ] #R0Mat
+            tempD_ = vcat(tempD_, [ zero(R0Mat) for l in (N+1):B ])
+            taylor_ = [zero(R0Mat) for l in 1:N]
             for l = 1:N
-                taylor_[l] = 0
                 for m = 1:N
                     taylor_[l] = taylor_[l] + tempD_[m]*Vi[m,l]
                 end
@@ -279,9 +310,9 @@ R0PolMatH)
             end
             # matrix
             R0Mat = parent(tempM_[1])
-            taylor_ = [ ] #R0Mat
+            tempM_ = vcat(tempM_, [ zero(R0Mat) for l in (N+1):B ])
+            taylor_ = [zero(R0Mat) for l in 1:N]
             for l = 1:N
-                taylor_[l] = 0
                 for m = 1:N
                     taylor_[l] = taylor_[l] + tempM_[m]*Vi[m,l]
                 end
@@ -292,12 +323,12 @@ R0PolMatH)
                 for i = 1:N
                     tempM_[l] = tempM_[l] + taylor_[i]*c
                     c = c*l
-                    end
                 end
+            end
         end
     end
-    resM_ = [ CastMatrix(R1MatH,tempM_[l]) for l in 1:B ]
-    resD_ = [ CastElement(R1,tempD_[l][1,1]) for l in 1:B ]
+    resM_ = [ CastBaseMatrix(R1MatH,tempM_[l]) for l in 1:B ]
+    resD_ = [ R1(data(tempD_[l][1,1])) for l in 1:B ]
 
     return resM_, resD_
 end
@@ -306,24 +337,24 @@ function HReduce(i, iota, mu_, genM, genD, M_, D_, p, R1ModH)
 # reduces the differential T_{(i,j),k} horizontally
 #
     R1 = base_ring(R1ModH)
-    b = Dimension(R1ModH)
+    b = R1ModH.cols
 
     res = zero(R1ModH)
 
     # Note: #mu_ = b*k+1
-    res[1] = mu_[end]   # Recall: mu_[r] = mu_{k,r+1,j}
+    res[1,1] = mu_[end]   # Recall: mu_[r] = mu_{k,r+1,j}
 
     for l = (i+ length(mu_)):-1:1
         for m = 1:b-1
-            res = res*Evaluate(genM, p*l-m)*( Evaluate(genD, p*l-m)^(-1) )
+            res = res*Evaluate(genM, R1(p*l-m))*( evaluate(genD, R1(p*l-m))^(-1) )
         end
-        res = res*Evaluate(genM, p*l-b)
-        d = Evaluate(genD, p*l-b)
-        res = R1ModH([ R1(div(res[m], d)) for m in 1:b ])
+        res = res*Evaluate(genM, R1(p*l-b))
+        d = evaluate(genD, R1(p*l-b))
+        res = R1ModH([ R1(divexact(res[1,m],d)) for m in 1:b ])
         res = res*M_[l]*( D_[l]^(-1) )
-        res = res*Evaluate(genM, (l-1)*p)*(Evaluate(genD,(l-1)*p)^(-1))
+        res = res*Evaluate(genM, R1((l-1)*p))*(evaluate(genD,R1((l-1)*p))^(-1))
         if ((l-1)-i-1 >= 0)
-            res[1] = res[1] + mu_[(l-1)-i]
+            res[1,1] = res[1,1] + mu_[(l-1)-i]
         end
     end
 
@@ -343,10 +374,10 @@ function VRedMatrixSeq(j, a, h, r_, s_, p, N, R1MatV, R1PolMatV)
     R1PolMat = MatrixSpace(R1Pol, 1, 1)
 
     t_ = vcat([ 0 ], [ Row(-p*(a*k + j), a) for k in 0:(N-1) ])
-    L_ = [ t_[i] for i in 1:(lenght(t_)-1) ]
+    L_ = [ t_[i] for i in 1:(length(t_)-1) ]
     R_ = [ t_[i] for i in 2:length(t_) ]
     slr = floor(Int64, log(4, R_[end]))
-    DDi = UpperCaseDD(one(R1), 2^slr, 2^slr)
+    DDi = UpperCaseDD(one(R1), R1(2^slr), 2^slr)
     DDi = DDi^(-1)
 
     iota = Block(-p*j, a)
@@ -354,8 +385,8 @@ function VRedMatrixSeq(j, a, h, r_, s_, p, N, R1MatV, R1PolMatV)
     genM = zero(R1PolMatV)
     c_ = [  ] #R1Pol
     for i = 0:b-2
-        c_ = [ (a*t + iota-a)*Coefficient(r_[i+1], m) +
-              a*Coefficient(Derivative(s_[i+1]), m) for m in 0:(b-2) ]
+        c_ = [ (a*t + iota-a)*coeff(r_[i+1], m) +
+              a*coeff(derivative(s_[i+1]), m) for m in 0:(b-2) ]
         for m = 1:b-1
             genM[i+1,m] = c_[m]
         end
@@ -381,13 +412,13 @@ function VReduce(i, j, a, h, wH_, M_, D_, R1ModV)
     b = degree(h)
     N = length(wH_)
 
-    res = R1ModV([ wH_[N, j, i+1][m] for m in 2:b ])
+    res = R1ModV([ wH_[N][ j][ i+1][1,m] for m in 2:b ])
 
     for k = (N-1):-1:1
         res = res*M_[k+1]
         d = D_[k+1]
-        res = R1ModV([ R1(div(res[m], d)) for m in 1:(b-1) ])
-        res = R1ModV([ wH_[k, j, i+1][m] + res[m-1] for m in 2:b ])
+        res = R1ModV([ R1(divexact(res[1,m], d)) for m in 1:(b-1) ])
+        res = R1ModV([ wH_[k][j][i+1][1,m] + res[1,m-1] for m in 2:b ])
     end
 
     res = res*M_[1]*( D_[1]^(-1))
@@ -455,7 +486,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     #R0Pol = PolynomialRing(R0)
     #R1 = UnramifiedQuotientRing(K,N+1)
     #R1Pol = PolynomialRing(R1)
-
+    println(N)
     R0 = ResidueRing(ZZ, p^N)
     R0Pol,t1 = PolynomialRing(R0,'t')
     R1 = ResidueRing(ZZ,p^(N+1))
@@ -466,7 +497,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
 
     # Step 1: Horizontal reduction
     R1MatH = MatrixSpace(R1, b, b)
-    R1ModH = MatrixSpace(R1, b, 1)
+    R1ModH = MatrixSpace(R1, 1, b)
     R1PolMatH = MatrixSpace(R1Pol, b, b)
     R0PolMatH = MatrixSpace(R0Pol, b, b)
 
@@ -480,13 +511,14 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     R0Mat = MatrixSpace(R0, N, N)
     if (N < b-1 +b*(N-1)) && (N > 1)
         V = R0Mat( [ i^j for i in 1:N for j in 0:N-1 ])
-        Vi = R0Mat(V^(-1))
+        Vi = inv(V)
     else
         Vi = one(R0Mat)
     end
 
     hk = one(R1Pol)
     hFrob = R1Pol([ coeff(h,i) for i in 0:degree(h) ])
+    println(hFrob);
     # TODO hFrob = R1Pol([ FrobeniusImage(coeff(h,i)) for i in 0:degree(h) ])
     # at the start of the k-th loop hk = (hFrob)^k
     for k = 0:(N-1)
@@ -496,8 +528,8 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
         L_ = [ (l-1)*p for l in 1:mn ]
         R_ = [ (l*p -b-1) for l in 1:mn ]
         slr = floor(Int64, log(4, R_[end]))
-        DDi = UpperCaseDD(one(R0), 2^slr, 2^slr)
-        DDi = DDi^(-1)
+        DDi = UpperCaseDD(one(R0), R0(2^slr), 2^slr)
+        DDi = inv(DDi)
 
         for j = 1:a-1
             # j and k fix the row index
@@ -523,7 +555,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
             mu_ = ScalarCoefficients(j, k, a, hk, p, q, N)
 
             # reduce
-            wH_[k+1,j] = [ HReduce(i, iota, mu_, genM, genD, M_,
+            wH_[k+1][j] = [ HReduce(i, iota, mu_, genM, genD, M_,
                                    D_, p, R1ModH) for i in 0:(b-2) ]
         end
         hk = hk*hFrob
@@ -531,7 +563,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
 
     # Step 2: Vertical reduction
     R1MatV = MatrixSpace(R1, b-1, b-1)
-    R1ModV = MatrixSpace(R1, b-1, 1)
+    R1ModV = MatrixSpace(R1, 1, b-1)
     R1PolMatV = MatrixSpace(R1Pol, b-1, b-1)
     wV_ = [ [] for j in 1:(a-1) ]
     # stores the results of the reduction
@@ -561,7 +593,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     for j = 1:a-1
         for i = 0:b-2
             for m = 1:b-1
-                res[((j-1)*(b-1) +i+1), ((Block(-p*j, a)-1)*(b-1) +m)] = CastElement(R0,(wV_[j,i+1][m]))
+                res[((j-1)*(b-1) +i+1), ((Block(-p*j, a)-1)*(b-1) +m)] = R0(data((wV_[j][i+1][1,m])))
             end
         end
     end
@@ -596,7 +628,6 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
 
     # Step 2: Determine absolute Frobenius action mod precision
     M = AbsoluteFrobeniusAction(a, hbar, N)
-    print(M)
 
     # Step 3: Determine Frobenius action mod precision
     MM = M
@@ -610,12 +641,16 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
          # Multiply
          M = M * MM
     end
+    println(M);
 
     # Step 4: Determine L polynomial
-    ZPol,t = PolynomialRing(ZZ)
-    CP = charpoly(PolynomialRing(base_ring(M))[1],M)
-    Chi = ZPol(CP)
-    L = ZPol(t^(2*g)*Evaluate(Chi, 1/t))
+    ZPol,t = PolynomialRing(ZZ,"t")
+    #CP = charpoly(PolynomialRing(base_ring(M),"t")[1],M::MatElem{RingElem})
+    CP = invoke(charpoly, Tuple{Ring, MatElem{Nemo.nmod}},  PolynomialRing(base_ring(M),"t")[1], M)
+    println(CP)
+    Chi = cast_poly_nmod(ZPol,CP)
+    L = numerator(t^(2*g)*(Chi)(1//t))
+    println(t^(2*g)*((Chi)(1//t)))
     coeff_ = [ coeff(L, i) for i in 0:(2*g) ]
     prec = p^N
     mid = prec >> 1
@@ -630,6 +665,6 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
     L = ZPol(coeff_)
 
     # Step 5: Output zeta function
-    return L / (q*t^2 - (q+1)*t + 1)
+    return L // (q*t^2 - (q+1)*t + 1)
 end
 
