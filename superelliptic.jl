@@ -26,6 +26,7 @@
 
 include("linearrecurrence.jl")
 import AbstractAlgebra.Ring
+import AbstractAlgebra.Generic
 
 # A few generalities on the differentials and the spaces W_{s,t}:
 # The differential x^iy^j dx lies in
@@ -126,6 +127,9 @@ function RSCombination(h)
         end
     end
     Mi = inv(M)
+    if Mi isa Tuple
+        Mi = divexact(Mi[1],Mi[2])
+    end
 
     resR_ = [ parent(h)([ Mi[i,c] for c in 1:(b-1) ]) for i in 1:(b-1) ]
     resS_ = [ parent(h)([ Mi[i,c] for c in b:rk ]) for i in 1:(b-1) ]
@@ -485,9 +489,14 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     #R0Pol = PolynomialRing(R0)
     #R1 = UnramifiedQuotientRing(K,N+1)
     #R1Pol = PolynomialRing(R1)
-    R0 = ResidueRing(ZZ, p^N)
+    if fits(Int64, ZZ(p)^(N+1))
+        R0 = ResidueRing(ZZ, p^N)
+        R1 = ResidueRing(ZZ, p^(N+1))
+    else
+        R0 = ResidueRing(ZZ, ZZ(p)^N)
+        R1 = ResidueRing(ZZ, ZZ(p)^(N+1))
+    end
     R0Pol,t1 = PolynomialRing(R0,'t')
-    R1 = ResidueRing(ZZ,p^(N+1))
     R1Pol,t2 = PolynomialRing(R1,'t')
 
     Rt,t3 = PolynomialRing(ZZ,'t')
@@ -510,6 +519,9 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     if (N < b-1 +b*(N-1)) && (N > 1)
         V = R0Mat( [ i^j for j in 0:N-1 for i in 1:N ])
         Vi = inv(V)
+        if Vi isa Tuple
+            Vi = divexact(Vi[1],Vi[2])
+        end
     else
         Vi = one(R0Mat)
     end
@@ -642,11 +654,11 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
     # Step 4: Determine L polynomial
     ZPol,t = PolynomialRing(ZZ,"t")
     #CP = charpoly(PolynomialRing(base_ring(M),"t")[1],M::MatElem{RingElem})
-    CP = invoke(charpoly, Tuple{Ring, MatElem{Nemo.nmod}},  PolynomialRing(base_ring(M),"t")[1], M)
+    CP = invoke(charpoly, Tuple{Ring, Union{MatElem{Nemo.nmod},Generic.Mat}},  PolynomialRing(base_ring(M),"t")[1], M)
     Chi = cast_poly_nmod(ZPol,CP)
     L = numerator(t^(2*g)*(Chi)(1//t))
     coeff_ = [ coeff(L, i) for i in 0:(2*g) ]
-    prec = p^N
+    prec = ZZ(p)^N
     mid = prec >> 1
     for i = 0:g
         if (coeff_[i+1] > mid)
