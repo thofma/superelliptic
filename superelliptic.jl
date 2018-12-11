@@ -229,7 +229,7 @@ function CastBaseMatrix(R, M)
     return res
 end
 
-function HRedMatrix(t, iota, a, h, R1PolMatH)
+function HRedMatrix(t, iota, a, h, R1PolMatH, pts = [])
 # given row index t and block index iota,
 # the equation of the curve (via a,h)
 # return the horizontal reduction matrix
@@ -289,7 +289,7 @@ R0PolMatH)
     tempD_ = LinearRecurrence(transpose(R0PolMat(cast_poly_nmod(R0Pol,genD))),
                                L_, R_, DDi, slr)
     tempD_ = [ transpose(tempD_[m]) for m in 1:length(tempD_) ]
-    if (N < B)    # we need:compute the remaining matrices
+    if (N < B)    # we need to compute the remaining matrices
         if (N == 1)    # everything is congruent mod p
             tempM_ = vcat(tempM_, [ tempM_[1] for l in (N+1):B ])
             tempD_ = vcat(tempD_, [ tempD_[1] for l in (N+1):B ])
@@ -365,7 +365,7 @@ function HReduce(i, iota, mu_, genM, genD, M_, D_, p, R1ModH)
 end
 
 function VRedMatrixSeq(j, a, h, r_, s_, p, N, R1MatV, R1PolMatV)
-# Given the data:compute the generic reduction matrix
+# Given the data to compute the generic reduction matrix
 # (and its denominator) of the iota-th block,
 # return the matrix sequences needed for vertical reduction, i.e.
 # resM_[k] = M_V^{\iota}(k) and resD_[k] = "d_V^{\iota}(k)"
@@ -453,7 +453,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
 
 #   -  ``a`` - an integer > 1
 #   -  ``hbar`` - a squarefree univariate polynomial over a finite field
-#                 of degree coprime:a
+#                 of degree coprime to a
 #   -  ``N`` - an integer > 0 setting the desired precision
 
 #   OUTPUT:
@@ -544,7 +544,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
             # j and k fix the row index
             t = Row(-p*(a*k +j), a)
             # horizontal reductions are performed
-            # row by row from "bottom:top"
+            # row by row from "bottom to top"
 
             #iota = Block(-p*(a*k +j), a)
             # j fixes the block index
@@ -580,10 +580,10 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     # Note: w_{(i,j)} is nonzero only in the
     # iota(j)-th block, so _only_ this block is stored
     # Note: block size is now b-1!
-    # (as opposed:b during horizontal reduction)
+    # (as opposed to b during horizontal reduction)
 
     # reduction matrix sequences: preliminaries
-    # compute the r_i and s_i needed:define the
+    # compute the r_i and s_i needed to define the
     # vertical reduction matrices
     r_, s_ = RSCombination(h)
 
@@ -618,7 +618,7 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
 
 #   -  ``a`` - an integer > 1
 #   -  ``hbar`` - a squarefree univariate polynomial over a
-#                 finite field of degree coprime:a
+#                 finite field of degree coprime to a
 
 #   OUTPUT:
 
@@ -641,7 +641,7 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
     # Step 3: Determine Frobenius action mod precision
     MM = M
     for i in 1:n-1
-         # Apply Frobenius:MM
+         # Apply Frobenius to MM
          for j = 1:rows(MM)
              for k = 1:cols(MM)
                  MM[j, k] = MM[j, k] # TODO FrobeniusImage(MM[j, k]) but we are deg 1 for now so all good
