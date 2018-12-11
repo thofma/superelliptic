@@ -642,7 +642,7 @@ end
 function LinearRecurrence(M, L_, R_)
     s = Int64(floor(log(4,R_[end])))
     R = base_ring(base_ring(M))
-    return LinearRecurrence(M, L_, R_, (R(UpperCaseDD(1,2^s,2^s)))^(-1), s)
+    return LinearRecurrence(M, L_, R_, inv(R(UpperCaseDD(1,2^s,2^s))), s)
 end
 
 function LinearRecurrence(M, L_,R_, DDi, s)
