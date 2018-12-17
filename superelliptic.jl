@@ -126,7 +126,12 @@ function RSCombination(h)
             end
         end
     end
-    Mi = inv(M)
+    try 
+      Mi = inv(M)
+    catch e
+      _Mi, _d = pseudo_inv(lift(M))
+      Mi = inv(R(_d)) * RMat(_Mi)
+    end
     if Mi isa Tuple
         Mi = divexact(Mi[1],Mi[2])
     end
