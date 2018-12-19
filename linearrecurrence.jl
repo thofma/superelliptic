@@ -20,7 +20,7 @@
 # recurrences [1] with modifications a la Harvey [2].
 #
 # [1] Bostan, A., Gaudry, P., Schost, E.: Linear recurrences with polynomial
-#   coefficients and application:integer factorization and Cartier-Manin
+#   coefficients and application to integer factorization and Cartier-Manin
 #   operator. SIAM J. Comput. 36, 1777–1806 (2007)
 #
 # [2] Harvey, D.: Kedlaya's algorithm in larger characteristic. Int. Math.
@@ -33,6 +33,13 @@
 
 using Nemo
 
+function (R::FlintIntegerRing)(n::fmpz_poly)
+    return R(coeff(n,0))
+end
+
+function (R::FlintIntegerRing)(n::fmpq_poly)
+    return R(coeff(n,0))
+end
 
 function cast_poly_nmod(R, e)
     RR = base_ring(R)
@@ -40,10 +47,21 @@ function cast_poly_nmod(R, e)
     # If R is not a polynomial ring, then (RR eq RRR)
     res_ = [zero(RR) for i in 1:(degree(e) + 1)]
     for i = 0:degree(e)
-        res__ = []
-        res_[i+1] = RR(data(coeff(e,i)))
+        res_[i+1] = RR(lift_elem(coeff(e,i)))
     end
     return R(res_)
+end
+
+function lift_elem(ei)
+    return lift(FmpzPolyRing(:x), ei)
+end
+
+function lift_elem(ei::Nemo.gfp_elem)
+    return ei.data
+end
+
+function lift_elem(ei::Generic.Res{fmpz})
+    return data(ei)
 end
 
 function LowerCaseDD(alpha,beta,d)
@@ -432,7 +450,7 @@ function MatrixAPEvaluation(M, k_, logk,
         d = k_[i+1]
 
         for r = 1:n
-            #:deduce the components of M_k_[i]
+            # to deduce the components of M_k_[i]
             for c = 1:n
                 # we need more values of each component of M_k_[i+1]
                 baseValues_ = [ res_[j][r,c] for j in 1:(k_[i+1]+1) ]
