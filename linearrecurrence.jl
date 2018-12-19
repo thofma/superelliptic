@@ -60,7 +60,7 @@ function lift_elem(ei::Nemo.gfp_elem)
     return ei.data
 end
 
-function lift_elem(ei::Generic.Res{fmpz})
+function lift_elem(ei::Generic.ResElem{<:Union{RingElem, Integer}})
     return data(ei)
 end
 
