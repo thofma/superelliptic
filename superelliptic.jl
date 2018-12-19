@@ -28,6 +28,23 @@ include("linearrecurrence.jl")
 import AbstractAlgebra.Ring
 import AbstractAlgebra.Generic
 
+# Some dumb useless to everyone else functions that let me use nmod as if it were padic
+function Nemo.frobenius(a::Union{Nemo.nmod, Generic.Res{fmpz}})
+    return a
+end
+
+function Nemo.degree(R::Nemo.GaloisField)
+    return 1
+end
+
+function Nemo.degree(R::ResRing{fmpz})
+    return 1
+end
+
+function Nemo.degree(R::Nemo.NmodRing)
+    return 1
+end
+
 # A few generalities on the differentials and the spaces W_{s,t}:
 # The differential x^iy^j dx lies in
 #    the iota-th block of W_{s,t}
@@ -94,7 +111,7 @@ function ScalarCoefficients(j, k, a, hk, p, q, N)
             summand = summand*(l+1-k)//(-(j//a)-l)
             sum = sum + (-1)^(l+k)*summand
         end
-        sum = R1(numerator(sum))*(R1(denominator(sum))^(-1))
+        sum = R1(numerator(sum))*inv(R1(denominator(sum)))
         res_[r+1] = p*lambda*sum
     end
 
@@ -223,7 +240,7 @@ function CastBaseMatrix(R, M)
     res = zero_matrix(RR, rows(M), cols(M))
     for i = 1:rows(M)
         for j = 1:cols(M)
-            res[i,j] = RR(data(M[i,j]))
+            res[i,j] = RR(lift_elem(M[i,j]))
         end
     end
     return res
@@ -239,6 +256,7 @@ function HRedMatrix(t, iota, a, h, R1PolMatH, pts = [])
 # resM = M_H^{t,\iota}(s)
 # resD = d_H^{t,\iota}(s)
 #
+    println(t, iota, a, h, R1PolMatH)
     R1Pol = parent(h)
     s = gen(R1Pol)
 
@@ -331,7 +349,7 @@ R0PolMatH)
         end
     end
     resM_ = [ CastBaseMatrix(R1MatH,tempM_[l]) for l in 1:B ]
-    resD_ = [ R1(data(tempD_[l][1,1])) for l in 1:B ]
+    resD_ = [ R1(lift_elem(tempD_[l][1,1])) for l in 1:B ]
 
     return resM_, resD_
 end
@@ -349,16 +367,23 @@ function HReduce(i, iota, mu_, genM, genD, M_, D_, p, R1ModH)
 
     for l = (i+ length(mu_)):-1:1
         for m = 1:b-1
-            res = res*Evaluate(genM, R1(p*l-m))*( evaluate(genD, R1(p*l-m))^(-1) )
+            res *= Evaluate(genM, R1(p*l-m))*inv(evaluate(genD, R1(p*l-m)))
         end
-        res = res*Evaluate(genM, R1(p*l-b))
+        res *= Evaluate(genM, R1(p*l-b))
         d = evaluate(genD, R1(p*l-b))
         res = R1ModH([ R1(divexact(res[1,m],d)) for m in 1:b ])
-        res = res*M_[l]*( D_[l]^(-1) )
-        res = res*Evaluate(genM, R1((l-1)*p))*(evaluate(genD,R1((l-1)*p))^(-1))
+        println(">>>>>>>>");
+        println(res);
+        res *= M_[l]
+        res *= inv(D_[l])
+        println(res);
+        res *= Evaluate(genM, R1((l-1)*p))
+        res *= inv(evaluate(genD,R1((l-1)*p)))
+        println(res);
         if ((l-1)-i-1 >= 0)
-            res[1,1] = res[1,1] + mu_[(l-1)-i]
+            res[1,1] += mu_[(l-1)-i]
         end
+        println(res);
     end
 
     return res
@@ -381,7 +406,7 @@ function VRedMatrixSeq(j, a, h, r_, s_, p, N, R1MatV, R1PolMatV)
     R_ = [ t_[i] for i in 2:length(t_) ]
     slr = floor(Int64, log(4, R_[end]))
     DDi = UpperCaseDD(one(R1), R1(2^slr), 2^slr)
-    DDi = DDi^(-1)
+    DDi = inv(DDi)
 
     iota = Block(-p*j, a)
 
@@ -418,13 +443,14 @@ function VReduce(i, j, a, h, wH_, M_, D_, R1ModV)
     res = R1ModV([ wH_[N][ j][ i+1][1,m] for m in 2:b ])
 
     for k = (N-1):-1:1
-        res = res*M_[k+1]
+        res *= M_[k+1]
         d = D_[k+1]
         res = R1ModV([ R1(divexact(res[1,m], d)) for m in 1:(b-1) ])
         res = R1ModV([ wH_[k][j][i+1][1,m] + res[1,m-1] for m in 2:b ])
     end
 
-    res = res*M_[1]*( D_[1]^(-1))
+    res *= M_[1]
+    res *= inv(D_[1])
 
     return res
 end
@@ -437,11 +463,17 @@ end
 #
 #    return AbsoluteFrobeniusAction(a, hbar, N)
 #end
+function lift_fq_to_qadic(R, a)
+    if typeof(a) <: Union{<: ResElem, Nemo.gfp_elem}
+        return R(lift_elem(a))
+    else
+        return R(FmpzPolyRing(:x)([coeff(a, i) for i in 0:degree(R)-1]))
+    end
+end
 
-
-function lift_fp_to_nmod(R, f)
+function lift_fq_to_qadic_poly(R::PolyRing, f)
     #Ry, _ = PolynomialRing(ResidueRing(ZZ, characteristic(base_ring(parent(f)))^N), "y")
-    return R([coeff(coeff(f, i), 0) for i in 0:degree(f)])
+    return R([lift_fq_to_qadic(base_ring(R), coeff(f, i)) for i in 0:degree(f)])
 end
 
 function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::RngIntElt)\
@@ -482,25 +514,25 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     (N < 1) && error("Please enter a positive precision N")
     (p <= (a*N-1)*b) && error("Characteristic too small", (a*N - 1)*b)
 
-    (n != 1) && error("Only p-adics no q-adics (for now)")
-
-    # TODO change this!
-    #R0 = UnramifiedQuotientRing(K,N)
-    #R0Pol = PolynomialRing(R0)
-    #R1 = UnramifiedQuotientRing(K,N+1)
-    #R1Pol = PolynomialRing(R1)
-    if fits(Int64, ZZ(p)^(N+1))
-        R0 = ResidueRing(ZZ, p^N)
-        R1 = ResidueRing(ZZ, p^(N+1))
+    if n == 1
+        if fits(Int64, ZZ(p)^(N+1))
+            R0 = ResidueRing(ZZ, p^N)
+            R1 = ResidueRing(ZZ, p^(N+1))
+        else
+            R0 = ResidueRing(ZZ, ZZ(p)^N)
+            R1 = ResidueRing(ZZ, ZZ(p)^(N+1))
+        end
     else
-        R0 = ResidueRing(ZZ, ZZ(p)^N)
-        R1 = ResidueRing(ZZ, ZZ(p)^(N+1))
+        R0 = QadicField(p, n, N)
+        R1 = QadicField(p, n, N + 1)
     end
     R0Pol,t1 = PolynomialRing(R0,'t')
     R1Pol,t2 = PolynomialRing(R1,'t')
 
     Rt,t3 = PolynomialRing(ZZ,'t')
-    h = lift_fp_to_nmod(R1Pol, hbar)
+    h = lift_fq_to_qadic_poly(R1Pol, hbar)
+    println(h)
+    println(">>>>>>>>>>>>>>>>>>>>>>")
 
     # Step 1: Horizontal reduction
     R1MatH = MatrixSpace(R1, b, b)
@@ -527,8 +559,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     end
 
     hk = one(R1Pol)
-    hFrob = R1Pol([ coeff(h,i) for i in 0:degree(h) ])
-    # TODO hFrob = R1Pol([ FrobeniusImage(coeff(h,i)) for i in 0:degree(h) ])
+    hFrob = R1Pol([ frobenius(coeff(h,i)) for i in 0:degree(h) ])
     # at the start of the k-th loop hk = (hFrob)^k
     for k = 0:(N-1)
         # reduction matrix sequences: preliminaries
@@ -562,12 +593,14 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
 
             # approximate frobenius action
             mu_ = ScalarCoefficients(j, k, a, hk, p, q, N)
+            println("mu")
+            println(mu_)
 
             # reduce
             wH_[k+1][j] = [ HReduce(i, iota, mu_, genM, genD, M_,
                                    D_, p, R1ModH) for i in 0:(b-2) ]
         end
-        hk = hk*hFrob
+        hk *= hFrob
     end
 
     # Step 2: Vertical reduction
@@ -602,7 +635,7 @@ function AbsoluteFrobeniusAction(a, hbar,N)#(a::RngIntElt, hbar::RngUPolElt,N::R
     for j = 1:a-1
         for i = 0:b-2
             for m = 1:b-1
-                res[((j-1)*(b-1) +i+1), ((Block(-p*j, a)-1)*(b-1) +m)] = R0(data((wV_[j][i+1][1,m])))
+                res[((j-1)*(b-1) +i+1), ((Block(-p*j, a)-1)*(b-1) +m)] = R0(lift_elem(wV_[j][i+1][1,m]))
             end
         end
     end
@@ -638,24 +671,27 @@ function ZetaFunction(a, hbar)#(a::RngIntElt, hbar::RngUPolElt)
     # Step 2: Determine absolute Frobenius action mod precision
     M = AbsoluteFrobeniusAction(a, hbar, N)
 
+    println(M);
     # Step 3: Determine Frobenius action mod precision
-    MM = M
+    MM = deepcopy(M)
     for i in 1:n-1
-         # Apply Frobenius to MM
-         for j = 1:rows(MM)
-             for k = 1:cols(MM)
-                 MM[j, k] = MM[j, k] # TODO FrobeniusImage(MM[j, k]) but we are deg 1 for now so all good
-             end
-         end
-         # Multiply
-         M = M * MM
+        # Apply Frobenius to MM
+        for j = 1:rows(MM)
+            for k = 1:cols(MM)
+                MM[j, k] = frobenius(MM[j, k])
+            end
+        end
+        # Multiply
+        M = M * MM
     end
+    println(M);
 
     # Step 4: Determine L polynomial
     ZPol,t = PolynomialRing(ZZ,"t")
     #CP = charpoly(PolynomialRing(base_ring(M),"t")[1],M::MatElem{RingElem})
     CP = invoke(charpoly, Tuple{Ring, Union{MatElem{Nemo.nmod},Generic.Mat}},  PolynomialRing(base_ring(M),"t")[1], M)
-    Chi = cast_poly_nmod(ZPol,CP)
+    println(CP)
+    Chi = cast_poly_nmod(ZPol, CP)
     L = numerator(t^(2*g)*(Chi)(1//t))
     coeff_ = [ coeff(L, i) for i in 0:(2*g) ]
     prec = ZZ(p)^N
