@@ -1,11 +1,12 @@
 AttachSpec("superelliptic");
 
-Br:=Integers(107);
-Ri<x> := PolynomialRing(Br);
-M := Matrix(Ri, [[0,0,2],[105,0,0],[0,105,0]]);
-L := [0];
-R := [103];
-s:=Floor(Log(4,R[#R]));
-DDi:= UpperCaseDD(Br!1,Br!(2^s),2^s)^(-1);
+Br:=UnramifiedQuotientRing(GF(107^2),2);
+Ri<t> := PolynomialRing(Br);
+M := Matrix(Ri,5,5,[0, 0, 0, 0, 3*t, 131079598*t+520, 0, 0, 0, 3*t+131079497, 0, 131079598*t+520, 0, 0, 0, 0, 0, 131079598*t+520, 0, 0, 0, 0, 0, 131079598*t+520, 0]);
+L :=[0, 107, 214, 321];
+R := [101, 208, 315, 422];
+s:=4;
+DDi:= Br!84664426;
 LinearRecurrence(M, L, R, DDi, s);
 print "expected";
+
