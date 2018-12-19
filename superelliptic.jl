@@ -472,7 +472,11 @@ function lift_fq_to_qadic(R, a)
     if typeof(a) <: Union{<: ResElem, Nemo.gfp_elem}
         return R(lift_elem(a))
     else
-        return R(FmpzPolyRing(:x)([coeff(a, i) for i in 0:degree(R)-1]))
+        t = FmpzPolyRing(:x)([coeff(a, i) for i in 0:degree(R)-1])
+        if degree(R) == 1
+            return R(coeff(t,0))
+        end
+        return R(t)
     end
 end
 
