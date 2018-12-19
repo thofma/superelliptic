@@ -11,7 +11,9 @@ RiR,xR = PolynomialRing(BrR,'x')
 
 print("Fakery\n")
 FakeP,k = PolynomialRing(QQ, 'k')
-BrF= ResidueRing(FakeP,k^N)
+#BrF= ResidueRing(FakeP,k^N)
+BrF= FmpqAbsSeriesRing(4,:k)
+k = gen(BrF)
 RiF,xF = PolynomialRing(BrF,'x')
 
 MF = matrix(RiF,2,2,[xF+k,xF,1 + 3*k,xF+1])
