@@ -97,7 +97,7 @@ function ScalarCoefficients(j, k, a, hk, p, q, N)
     for r = 0:degree(hk)
         lambda = coeff(hk, r)
         # num = numerator of the two binomial expressions
-        num = 1
+        num = QQ(1)
         for i = 0:N-2
             num = num*(-(j//a)-i)
         end
