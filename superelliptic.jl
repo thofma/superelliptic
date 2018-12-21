@@ -328,7 +328,7 @@ R0PolMatH)
             end
             for l = N+1:B
                 tempD_[l] = zero(R0Mat)
-                c = 1
+                c = one(R0)
                 for i = 1:N
                     tempD_[l] = tempD_[l] + taylor_[i]*c
                     c = c*l
@@ -345,7 +345,7 @@ R0PolMatH)
             end
             for l = N+1:B
                 tempM_[l] = zero(R0Mat)
-                c = 1
+                c = one(R0)
                 for i = 1:N
                     tempM_[l] = tempM_[l] + taylor_[i]*c
                     c = c*l
